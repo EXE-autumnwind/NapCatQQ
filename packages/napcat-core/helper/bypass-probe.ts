@@ -33,64 +33,152 @@ export type BypassSignatureEncoding = 'ascii' | 'utf16le';
 
 export interface BypassSignature {
   /** 到哪个 QQ 运行时文件里找 */
-  file: 'QQNT.dll' | 'wrapper.node';
+  file: 'QQNT.dll' | 'wrapper.node' | 'qq';
   pattern: string;
   encoding: BypassSignatureEncoding;
 }
 
+export type BypassPlatformFamily = 'win32' | 'linux' | 'darwin';
+
 export interface BypassStaticRequirement {
-  /** wrapper.node 导入表里必须出现的 API（大小写不敏感） */
+  /** wrapper.node 导入表里必须出现的 API（大小写不敏感，仅 win32 有意义） */
   requiredImports: string[];
   /** 缺失只降级、不影响开关本身的 API */
   optionalImports: string[];
   /** 需要出现在 QQ 运行时文件里的字符串特征 */
   signatures: BypassSignature[];
+  /** 必须存在的环境变量（例如 Linux 的 X11 窗口伪造需要 DISPLAY） */
+  requiredEnv: string[];
   /** 该开关在原生模块里的实现要点（来自逆向，用于日志与文档） */
   note: string;
 }
 
-/**
- * 开关 → 依赖表。
- * 更新 QQ 版本后如果这里开始报 missing，说明 QQ 改了实现，反检测需要跟进。
- */
-export const BYPASS_STATIC_REQUIREMENTS: Record<BypassKey, BypassStaticRequirement> = {
+export type BypassRequirementTable = Record<BypassKey, BypassStaticRequirement>;
+
+/** win32：IAT / 窗口类 / 进程名都在 wrapper.node 与 QQNT.dll 上，可静态核对 */
+const WIN32_REQUIREMENTS: BypassRequirementTable = {
   hook: {
     requiredImports: ['VirtualQuery'],
     optionalImports: ['VirtualQueryEx'],
     signatures: [],
+    requiredEnv: [],
     note: 'IAT 伪装：hook wrapper.node 的 VirtualQuery，把 AllocationBase 指回 kernel32 并隐藏 RWX 页',
   },
   window: {
     requiredImports: [],
     optionalImports: [],
     signatures: [{ file: 'QQNT.dll', pattern: 'Base_PowerMessageWindow', encoding: 'utf16le' }],
+    requiredEnv: [],
     note: '窗口伪造：补建 Chromium base::PowerMonitor 的 Base_PowerMessageWindow',
   },
   module: {
     requiredImports: ['K32EnumProcessModules', 'GetModuleHandleW', 'GetModuleHandleExA'],
     optionalImports: [],
     signatures: [],
+    requiredEnv: [],
     note: '模块枚举隐藏：K32EnumProcessModules / GetModuleHandleW / GetModuleHandleExA 过滤注入模块',
   },
   process: {
     requiredImports: ['GetModuleFileNameW', 'GetModuleFileNameA'],
     optionalImports: [],
     signatures: [],
+    requiredEnv: [],
     note: '进程名伪装：GetModuleFileNameA/W 返回 QQ 自身路径',
   },
   container: {
     requiredImports: [],
     optionalImports: [],
     signatures: [],
+    requiredEnv: [],
     note: '容器特征处理在原生模块内部完成，没有可静态核对的外部特征',
   },
   js: {
     requiredImports: [],
     optionalImports: [],
     signatures: [{ file: 'QQNT.dll', pattern: 'NodeContextifyContextMetrics1', encoding: 'ascii' }],
+    requiredEnv: [],
     note: 'JS 反检测：hook NodeContextifyContextMetrics1 伪造 contextify 计数，并隐藏注入的 JS 清单',
   },
 };
+
+/**
+ * linux：全部靠运行时 hook libc 实现（openat/prctl、fopen/fgets/fclose、X11、popen），
+ * 没有 wrapper.node 导入表可查，因此只核对真正可静态验证的依赖：
+ * - js 依赖 qq 二进制里存在 NodeContextifyContextMetrics1
+ * - window 依赖 DISPLAY（X server 不在就建不出 fake 'QQ' 窗口）
+ * 其余标 unknown，不做"缺依赖"的误报。
+ */
+const LINUX_REQUIREMENTS: BypassRequirementTable = {
+  hook: {
+    requiredImports: [],
+    optionalImports: [],
+    signatures: [],
+    requiredEnv: [],
+    note: 'maps 过滤：hook fopen/fgets/fclose，隐藏 /proc/self/maps 里的注入模块（运行时 hook，无静态依赖）',
+  },
+  window: {
+    requiredImports: [],
+    optionalImports: [],
+    signatures: [],
+    requiredEnv: ['DISPLAY'],
+    note: "X11 窗口伪造：创建 fake 'QQ' 窗口以通过校验，依赖 DISPLAY 与 X server",
+  },
+  module: {
+    requiredImports: [],
+    optionalImports: [],
+    signatures: [],
+    requiredEnv: [],
+    note: '模块隐藏：与 maps 过滤共用实现，运行时 hook，无静态依赖',
+  },
+  process: {
+    requiredImports: [],
+    optionalImports: [],
+    signatures: [],
+    requiredEnv: [],
+    note: '进程名伪装：hook openat/read/close 伪造 /proc/self/cmdline，prctl(PR_GET_NAME) 返回 qq',
+  },
+  container: {
+    requiredImports: [],
+    optionalImports: [],
+    signatures: [],
+    requiredEnv: [],
+    note: '容器伪装：伪造 hostname、隐藏容器标记、拦截 systemd-detect-virt（popen/stat hook）',
+  },
+  js: {
+    requiredImports: [],
+    optionalImports: [],
+    signatures: [{ file: 'qq', pattern: 'NodeContextifyContextMetrics1', encoding: 'ascii' }],
+    requiredEnv: [],
+    note: 'JS 反检测：hook NodeContextifyContextMetrics1 伪造 contextify 计数，并隐藏注入的 JS 清单',
+  },
+};
+
+/** darwin：原生模块有产物，但没有做过依赖级逆向，全部标 unknown 而不是猜 */
+const DARWIN_REQUIREMENTS: BypassRequirementTable = {
+  hook: { requiredImports: [], optionalImports: [], signatures: [], requiredEnv: [], note: '未做依赖级核对' },
+  window: { requiredImports: [], optionalImports: [], signatures: [], requiredEnv: [], note: '未做依赖级核对' },
+  module: { requiredImports: [], optionalImports: [], signatures: [], requiredEnv: [], note: '未做依赖级核对' },
+  process: { requiredImports: [], optionalImports: [], signatures: [], requiredEnv: [], note: '未做依赖级核对' },
+  container: { requiredImports: [], optionalImports: [], signatures: [], requiredEnv: [], note: '未做依赖级核对' },
+  js: { requiredImports: [], optionalImports: [], signatures: [], requiredEnv: [], note: '未做依赖级核对' },
+};
+
+/** 开关 → 平台依赖表。更新 QQ 版本后这里开始报 missing，说明 QQ 改了实现，反检测需要跟进。 */
+export const BYPASS_REQUIREMENTS: Record<BypassPlatformFamily, BypassRequirementTable> = {
+  win32: WIN32_REQUIREMENTS,
+  linux: LINUX_REQUIREMENTS,
+  darwin: DARWIN_REQUIREMENTS,
+};
+
+/** 兼容旧引用：win32 依赖表 */
+export const BYPASS_STATIC_REQUIREMENTS: BypassRequirementTable = WIN32_REQUIREMENTS;
+
+/** `${process.platform}.${arch}` → 依赖表所属平台族 */
+export function getBypassPlatformFamily (platform: string): BypassPlatformFamily {
+  if (platform.startsWith('linux')) return 'linux';
+  if (platform.startsWith('darwin')) return 'darwin';
+  return 'win32';
+}
 
 export type BypassProbeState = 'present' | 'partial' | 'missing' | 'unknown';
 
@@ -120,6 +208,8 @@ export interface BypassProbeOptions {
   wrapperPath?: string;
   /** QQNT.dll 路径，默认从 wrapper.node 的目录向上找 */
   qqntPath?: string;
+  /** qq 主程序路径（Linux/macOS），默认从 wrapper.node 的目录向上找 */
+  qqBinaryPath?: string;
   platform?: string;
   logger?: BypassLoggerLike;
   /** 只探测这些开关（通常传配置里开启的），为空则全部探测 */
@@ -193,6 +283,22 @@ export function findQQNTDll (wrapperPath?: string): string | undefined {
   return undefined;
 }
 
+/** 从 wrapper.node 所在目录向上查找 qq 主程序（Linux/macOS 的 Electron 二进制） */
+export function findQQBinary (wrapperPath?: string): string | undefined {
+  if (!wrapperPath) return undefined;
+  let dir = path.dirname(wrapperPath);
+  for (let depth = 0; depth < 4; depth++) {
+    for (const name of ['qq', 'QQ']) {
+      const candidate = path.join(dir, name);
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return undefined;
+}
+
 function probeSwitch (
   key: BypassKey,
   requirement: BypassStaticRequirement,
@@ -200,6 +306,7 @@ function probeSwitch (
     imports?: Map<string, string[]>;
     wrapperPath?: string;
     qqntPath?: string;
+    qqBinaryPath?: string;
     wrapperImportError?: string;
   }
 ): BypassSwitchProbe {
@@ -213,8 +320,14 @@ function probeSwitch (
     if (!context.imports.has(api.toLowerCase())) missing.push(`wrapper.node!${api}`);
   }
 
+  for (const envName of requirement.requiredEnv) {
+    if (!process.env[envName]) missing.push(`env:${envName}`);
+  }
+
   for (const signature of requirement.signatures) {
-    const filePath = signature.file === 'QQNT.dll' ? context.qqntPath : context.wrapperPath;
+    const filePath = signature.file === 'QQNT.dll'
+      ? context.qqntPath
+      : signature.file === 'qq' ? context.qqBinaryPath : context.wrapperPath;
     if (!filePath) {
       missing.push(`${signature.file}!${signature.pattern}（文件未找到）`);
       continue;
@@ -228,7 +341,10 @@ function probeSwitch (
     }
   }
 
-  if (requirement.requiredImports.length === 0 && requirement.signatures.length === 0) {
+  const hasAnyCheck = requirement.requiredImports.length > 0 ||
+    requirement.signatures.length > 0 ||
+    requirement.requiredEnv.length > 0;
+  if (!hasAnyCheck) {
     return { key, state: 'unknown', missing: [], detail: requirement.note };
   }
 
@@ -236,6 +352,7 @@ function probeSwitch (
     return { key, state: 'present', missing, detail: requirement.note };
   }
   const hasConfirmedDependency = requirement.requiredImports.some(api => context.imports?.has(api.toLowerCase())) ||
+    requirement.requiredEnv.some(name => Boolean(process.env[name])) ||
     requirement.signatures.some(sig => !missing.some(m => m.startsWith(`${sig.file}!${sig.pattern}`)));
   return {
     key,
@@ -251,8 +368,11 @@ function probeSwitch (
  */
 export function probeBypassCompat (options: BypassProbeOptions = {}): BypassProbeReport {
   const platform = options.platform ?? `${process.platform}.${process.arch}`;
+  const family = getBypassPlatformFamily(platform);
+  const requirements = BYPASS_REQUIREMENTS[family];
   const wrapperPath = options.wrapperPath ?? process.env['NAPCAT_WRAPPER_PATH'];
   const qqntPath = options.qqntPath ?? findQQNTDll(wrapperPath);
+  const qqBinaryPath = options.qqBinaryPath ?? findQQBinary(wrapperPath);
   const report: BypassProbeReport = {
     platform,
     platformSupported: isSupportedBypassPlatform(platform),
@@ -264,7 +384,7 @@ export function probeBypassCompat (options: BypassProbeOptions = {}): BypassProb
 
   let imports: Map<string, string[]> | undefined;
   let wrapperImportError: string | undefined;
-  const needsImports = BYPASS_KEYS.some(key => BYPASS_STATIC_REQUIREMENTS[key].requiredImports.length > 0 &&
+  const needsImports = BYPASS_KEYS.some(key => requirements[key].requiredImports.length > 0 &&
     (!options.only || options.only[key]));
   if (needsImports) {
     if (!wrapperPath || !fs.existsSync(wrapperPath)) {
@@ -282,10 +402,11 @@ export function probeBypassCompat (options: BypassProbeOptions = {}): BypassProb
 
   for (const key of BYPASS_KEYS) {
     if (options.only && !options.only[key]) continue;
-    report.switches[key] = probeSwitch(key, BYPASS_STATIC_REQUIREMENTS[key], {
+    report.switches[key] = probeSwitch(key, requirements[key], {
       imports,
       wrapperPath,
       qqntPath,
+      qqBinaryPath,
       wrapperImportError,
     });
   }

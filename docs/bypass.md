@@ -18,7 +18,9 @@ napcat.json(bypass)  →  归一化/校验  →  enableAllBypasses(原生)  → 
 因此**改开关语义要改原生模块**；本仓库能做的、也最容易出问题的是：配置漂移、调用遗漏、
 QQ 换版本后依赖静默消失。这三件事都已在本仓库内收口。
 
-## 2. 六个开关的真实实现（逆向 `napi2native.win32.x64.node` 得到）
+## 2. 六个开关的真实实现（逆向 `napi2native.*.node` 得到）
+
+### Windows（`napi2native.win32.x64.node`）
 
 | 开关 | 实现方式 | 依赖（缺了就失效） | 原生日志关键字 |
 |---|---|---|---|
@@ -31,6 +33,25 @@ QQ 换版本后依赖静默消失。这三件事都已在本仓库内收口。
 
 `hook` 里还有一条 `VirtualQueryEx` 子 hook；**QQ 9.9.37-54395 的 wrapper.node 并不导入它**，
 所以那条子 hook 永远空转（只会打 WARN）。自检把 `VirtualQueryEx` 标为 optional，就是这个原因。
+
+### Linux（`napi2native.linux.x64.node` / `arm64`）
+
+Linux 版没有 IAT 可改，六个开关全部改成运行时 hook libc，**功能是齐的**：
+
+| 开关 | 实现方式（二进制里的日志原文） | 依赖 |
+|---|---|---|
+| `hook` | `/proc/self/maps` 过滤：hook `fopen`/`fgets`/`fclose`，隐藏注入模块 | 运行时 hook，无静态依赖 |
+| `module` | 与 maps 过滤共用实现 | 运行时 hook，无静态依赖 |
+| `process` | `openat`/`read`/`close` 伪造 `/proc/self/cmdline`，`prctl(PR_GET_NAME)` → `qq` | 运行时 hook，无静态依赖 |
+| `container` | 伪造 hostname、隐藏容器标记、拦截 `systemd-detect-virt`（hook `popen`/`stat`/`gethostname`） | 运行时 hook，无静态依赖 |
+| `window` | 创建 fake `'QQ'` X11 窗口（`to pass verification`） | **需要 `DISPLAY` 与 X server**（headless 下必须有 Xvfb） |
+| `js` | `NodeContextifyContextMetrics1` 伪造 contextify 计数 + JS 清单隐藏 | `qq` 二进制里要有该符号 |
+
+对应日志前缀：`[BYPASS-LINUX] ...`。
+
+### macOS
+
+有产物（`darwin.x64` / `arm64`），但没有做过依赖级逆向，自检一律标 `unknown`，不猜。
 
 ## 3. 实测数据（QQ 9.9.37-54395，2026-11 采样）
 

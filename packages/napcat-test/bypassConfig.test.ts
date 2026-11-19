@@ -18,8 +18,10 @@ import {
 } from '@/napcat-core/helper/bypass';
 import { loadNapcatConfig, normalizeNapcatConfig } from '@/napcat-core/helper/config';
 import {
-  BYPASS_STATIC_REQUIREMENTS,
+  BYPASS_REQUIREMENTS,
+  findQQBinary,
   findQQNTDll,
+  getBypassPlatformFamily,
   initBypass,
   probeBypassCompat,
   resetBypassProbe,
@@ -287,6 +289,52 @@ describe('反检测静态自检', () => {
     expect(report.switches.container?.state).toBe('unknown');
   });
 
+  it('Linux 平台按 qq 二进制核对 js，其余不误报缺失', () => {
+    const dir = makeTempDir();
+    const wrapperPath = path.join(dir, 'wrapper.node');
+    const qqBinaryPath = path.join(dir, 'qq');
+    fs.writeFileSync(wrapperPath, buildPeWithImports({ 'KERNEL32.dll': KERNEL32_EXPORTS }));
+    fs.writeFileSync(qqBinaryPath, 'xx NodeContextifyContextMetrics1 yy');
+
+    const previousDisplay = process.env['DISPLAY'];
+    process.env['DISPLAY'] = ':99';
+    try {
+      const report = probeBypassCompat({ wrapperPath, qqBinaryPath, platform: 'linux.x64' });
+      expect(report.switches.js?.state).toBe('present');
+      // Linux 版靠 X11 建窗口，DISPLAY 存在才算就绪
+      expect(report.switches.window?.state).toBe('present');
+      // 其余开关是运行时 hook libc，没有可静态核对的外部依赖
+      for (const key of ['hook', 'module', 'process', 'container'] as const) {
+        expect(report.switches[key]?.state).toBe('unknown');
+      }
+      // Linux 依赖表里不应出现 Win32 API 名
+      expect(report.switches.hook?.missing).toEqual([]);
+    } finally {
+      if (previousDisplay === undefined) delete process.env['DISPLAY'];
+      else process.env['DISPLAY'] = previousDisplay;
+    }
+  });
+
+  it('Linux 上缺 DISPLAY 或 qq 二进制无符号时给出缺失项', () => {
+    const dir = makeTempDir();
+    const wrapperPath = path.join(dir, 'wrapper.node');
+    const qqBinaryPath = path.join(dir, 'qq');
+    fs.writeFileSync(wrapperPath, buildPeWithImports({ 'KERNEL32.dll': KERNEL32_EXPORTS }));
+    fs.writeFileSync(qqBinaryPath, 'no symbol here');
+
+    const previousDisplay = process.env['DISPLAY'];
+    delete process.env['DISPLAY'];
+    try {
+      const report = probeBypassCompat({ wrapperPath, qqBinaryPath, platform: 'linux.x64' });
+      expect(report.switches.js?.state).toBe('missing');
+      expect(report.switches.js?.missing[0]).toContain('qq!NodeContextifyContextMetrics1');
+      expect(report.switches.window?.state).toBe('missing');
+      expect(report.switches.window?.missing).toContain('env:DISPLAY');
+    } finally {
+      if (previousDisplay !== undefined) process.env['DISPLAY'] = previousDisplay;
+    }
+  });
+
   it('QQ 不再导入某个 API 时降级为 partial 并指出缺失项', () => {
     const dir = makeTempDir();
     const wrapperPath = path.join(dir, 'wrapper.node');
@@ -306,15 +354,19 @@ describe('反检测静态自检', () => {
     expect(report.switches.hook?.missing[0]).toContain('导入表不可读');
   });
 
-  it('findQQNTDll 从 wrapper.node 所在目录向上查找', () => {
+  it('findQQNTDll / findQQBinary 从 wrapper.node 所在目录向上查找', () => {
     const dir = makeTempDir();
     const appDir = path.join(dir, 'versions', '9.9.37-54395', 'resources', 'app');
     fs.mkdirSync(appDir, { recursive: true });
     const qqnt = path.join(dir, 'versions', '9.9.37-54395', 'QQNT.dll');
+    const qqBinary = path.join(dir, 'versions', '9.9.37-54395', 'qq');
     fs.writeFileSync(qqnt, 'stub');
+    fs.writeFileSync(qqBinary, 'stub');
     const wrapperPath = path.join(appDir, 'wrapper.node');
     expect(findQQNTDll(wrapperPath)).toBe(qqnt);
+    expect(findQQBinary(wrapperPath)).toBe(qqBinary);
     expect(findQQNTDll(undefined)).toBeUndefined();
+    expect(findQQBinary(undefined)).toBeUndefined();
   });
 });
 
@@ -368,11 +420,20 @@ describe('反检测配置与产物一致性守卫', () => {
     }
   });
 
-  it('每个开关都有静态依赖说明（避免新增开关时漏配自检）', () => {
-    for (const key of BYPASS_KEYS) {
-      const requirement = BYPASS_STATIC_REQUIREMENTS[key];
-      expect(requirement, `缺少 ${key} 的依赖定义`).toBeTruthy();
-      expect(requirement.note.length).toBeGreaterThan(0);
+  it('每个开关在三个平台族里都有依赖定义（避免新增开关时漏配自检）', () => {
+    for (const [family, table] of Object.entries(BYPASS_REQUIREMENTS)) {
+      for (const key of BYPASS_KEYS) {
+        const requirement = table[key];
+        expect(requirement, `${family} 缺少 ${key} 的依赖定义`).toBeTruthy();
+        expect(requirement.note.length, `${family}.${key} 缺少说明`).toBeGreaterThan(0);
+      }
     }
+  });
+
+  it('平台族归并不把 linux/darwin 认成 win32', () => {
+    expect(getBypassPlatformFamily('win32.x64')).toBe('win32');
+    expect(getBypassPlatformFamily('linux.x64')).toBe('linux');
+    expect(getBypassPlatformFamily('linux.arm64')).toBe('linux');
+    expect(getBypassPlatformFamily('darwin.arm64')).toBe('darwin');
   });
 });
