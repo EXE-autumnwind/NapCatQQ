@@ -168,7 +168,7 @@ jobs:
           set -euo pipefail
           if ! node .github/scripts/generate-release-notes.mjs "$CURRENT_TAG" "$GITHUB_REPOSITORY" CHANGELOG.md; then
             echo "自动生成更新日志失败，使用兜底内容" >&2
-            printf '新增\n\n- 维护接力构建\n\n修复(如有)\n\n删减（如有）\n' > CHANGELOG.md
+            printf '新增\n\n- 维护接力构建\n' > CHANGELOG.md
           fi
           cat >> CHANGELOG.md <<'EOF'
 

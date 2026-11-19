@@ -7,10 +7,12 @@ import { writeFileSync } from 'node:fs';
  * 输出格式（维护接力约定）：
  *   新增
  *   - ...
- *   修复(如有)
+ *   修复
  *   - ...
- *   删减（如有）
+ *   删减
  *   - ...
+ *
+ * 其中「修复」「删减」只在该分类有提交时才输出，没有就整段省略。
  *
  * 用法：node generate-release-notes.mjs <vX.Y.Z> <owner/repo> <output.md>
  */
@@ -87,10 +89,13 @@ for (const commit of commits.split('\n').filter(Boolean)) {
 
 const lines = ['新增', ''];
 lines.push(...(sections.added.length ? sections.added : ['- 无']));
-lines.push('', '修复(如有)', '');
-if (sections.fixed.length) lines.push(...sections.fixed);
-lines.push('', '删减（如有）', '');
-if (sections.removed.length) lines.push(...sections.removed);
+// 修复 / 删减 仅在确实有对应提交时才输出
+if (sections.fixed.length) {
+  lines.push('', '修复', '', ...sections.fixed);
+}
+if (sections.removed.length) {
+  lines.push('', '删减', '', ...sections.removed);
+}
 lines.push('', `[完整变更](${repositoryUrl}/compare/${previousVersion.tag}...${currentVersion.tag})`, '');
 
 writeFileSync(outputFile, lines.join('\n'), 'utf8');
