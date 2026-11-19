@@ -8,6 +8,7 @@ import {
   setCustomMirror,
   clearMirrorCache,
 } from 'napcat-common/src/mirror';
+import { NAPCAT_README_URL, NAPCAT_RELEASES_URL } from 'napcat-common/src/repo';
 import https from 'https';
 import http from 'http';
 
@@ -135,10 +136,10 @@ export const TestMirrorsSSEHandler: RequestHandler = async (req, res) => {
 
     if (type === 'raw') {
       mirrors = GITHUB_RAW_MIRRORS;
-      testUrl = 'https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/README.md';
+      testUrl = NAPCAT_README_URL;
     } else {
       mirrors = GITHUB_FILE_MIRRORS.filter(m => m);
-      testUrl = 'https://github.com/NapNeko/NapCatQQ/releases/latest';
+      testUrl = `${NAPCAT_RELEASES_URL}/latest`;
     }
 
     // 添加原始 URL 测试
@@ -216,9 +217,9 @@ export const TestSingleMirrorHandler: RequestHandler = async (req, res) => {
 
     let testUrl: string;
     if (type === 'raw') {
-      testUrl = 'https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/README.md';
+      testUrl = NAPCAT_README_URL;
     } else {
-      testUrl = 'https://github.com/NapNeko/NapCatQQ/releases/latest';
+      testUrl = `${NAPCAT_RELEASES_URL}/latest`;
     }
 
     const result = await testMirrorLatency(mirror || '', testUrl, 5000);

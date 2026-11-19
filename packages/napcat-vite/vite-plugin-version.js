@@ -53,7 +53,9 @@ function validateVersion (version) {
 export default function vitePluginNapcatVersion () {
   const pluginDir = path.resolve(__dirname, 'dist');
   const cacheFile = path.join(pluginDir, '.napcat-version.json');
-  const owner = 'NapNeko';
+  // 维护接力：与 napcat-common/src/repo.ts 保持一致，指向维护仓库，
+  // 仅在 CI 未注入 NAPCAT_VERSION 时才会走到这里的兜底拉取。
+  const owner = 'EXE-autumnwind';
   const repo = 'NapCatQQ';
   const maxAgeMs = 24 * 60 * 60 * 1000; // cache 1 day
   // CI 构建时可通过环境变量直接指定版本号

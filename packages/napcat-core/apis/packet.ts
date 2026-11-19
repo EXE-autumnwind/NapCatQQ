@@ -3,6 +3,7 @@ import offset from '@/napcat-core/external/napi2native.json';
 import { InstanceContext, NapCatCore } from '@/napcat-core/index';
 import { PacketClientSession } from '@/napcat-core/packet/clientSession';
 import { napCatVersion } from 'napcat-common/src/version';
+import { napcatReleaseTagUrl } from 'napcat-common/src/repo';
 import { LogWrapper } from '../helper/log';
 
 interface OffsetType {
@@ -62,7 +63,7 @@ export class NTQQPacketApi {
     const table = typedOffset[qqVer + '-' + os.arch()];
     if (!table) {
       const err = `[Core] [Packet] PacketBackend 不支持当前QQ版本架构：${qqVer}-${os.arch()}，
-            请参照 https://github.com/NapNeko/NapCatQQ/releases/tag/v${napCatVersion} 配置正确的QQ版本！`;
+            请参照 ${napcatReleaseTagUrl(`v${napCatVersion}`)} 配置正确的QQ版本！`;
       this.logger.logError(err);
       this.errStack.push(err);
       return false;

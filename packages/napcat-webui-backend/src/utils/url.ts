@@ -35,7 +35,11 @@ const hasContainerEnv = () => {
   }
 };
 
-const isDocker = () => {
+/**
+ * 判断当前进程是否运行在容器（Docker / Podman）中
+ * @returns 容器环境返回 true
+ */
+export const isDocker = () => {
   if (isDockerCached === undefined) {
     isDockerCached = hasContainerEnv() || hasDockerEnv() || hasDockerCGroup();
   }

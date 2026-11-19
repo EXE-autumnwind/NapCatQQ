@@ -89,7 +89,9 @@ export const siteConfig = {
     },
   ] as MenuItem[],
   links: {
-    github: 'https://github.com/NapNeko/NapCatQQ',
+    // 维护接力：检查更新 / 版本列表 / Release 下载都指向维护仓库
+    // （与 napcat-common/src/repo.ts 中的 NAPCAT_REPO_OWNER / NAPCAT_REPO_NAME 保持一致）
+    github: 'https://github.com/EXE-autumnwind/NapCatQQ',
     docs: 'https://napcat.napneko.icu/',
   },
 };

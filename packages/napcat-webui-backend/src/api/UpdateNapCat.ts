@@ -12,6 +12,8 @@ import {
   getGitHubRelease,
   findAvailableDownloadUrl,
 } from '@/napcat-common/src/mirror';
+import { NAPCAT_DOCKER_IMAGE, NAPCAT_REPO_NAME, NAPCAT_REPO_OWNER } from '@/napcat-common/src/repo';
+import { isDocker } from '@/napcat-webui-backend/src/utils/url';
 import { ILogWrapper } from '@/napcat-common/src/log-interface';
 
 // 更新请求体接口
@@ -139,7 +141,15 @@ export const UpdateNapCatHandler: RequestHandler = async (req, res) => {
     // 从请求体获取目标版本（可选）
     const { targetVersion, force, mirror } = req.body as UpdateRequestBody;
 
+    // Docker 容器内的文件替换会在容器重建后丢失，直接提示拉取新镜像
+    if (isDocker()) {
+      webUiLogger?.logWarn('[NapCat Update] 检测到容器环境，跳过容器内更新');
+      sendError(res, `Docker 环境请在宿主机执行 docker pull ${NAPCAT_DOCKER_IMAGE}:latest 并重建容器升级（容器内替换的文件会在重建后丢失）`);
+      return;
+    }
+
     // 确定要下载的文件名
+    // Linux / macOS 走 Shell 包（native 目录里已包含对应平台的 .node），Windows 依工作环境区分
     const ReleaseName = WebUiDataRuntime.getWorkingEnv() === NapCatCoreWorkingEnv.Framework ? 'NapCat.Framework.zip' : 'NapCat.Shell.zip';
 
     // 确定目标版本 tag
@@ -166,7 +176,7 @@ export const UpdateNapCatHandler: RequestHandler = async (req, res) => {
 
       // Action artifacts 通过 nightly.link 下载
       // 格式：https://nightly.link/{owner}/{repo}/actions/runs/{run_id}/{artifact_name}.zip
-      const baseUrl = `https://nightly.link/NapNeko/NapCatQQ/actions/runs/${runId}/${artifactName}.zip`;
+      const baseUrl = `https://nightly.link/${NAPCAT_REPO_OWNER}/${NAPCAT_REPO_NAME}/actions/runs/${runId}/${artifactName}.zip`;
       actualVersion = targetTag;
 
       webUiLogger?.log(`[NapCat Update] Action artifact URL: ${baseUrl}`);
@@ -189,7 +199,7 @@ export const UpdateNapCatHandler: RequestHandler = async (req, res) => {
       // 处理标准 release 版本
       // 使用 mirror 模块获取 release 信息（不依赖 API）
       // 通过 assetNames 参数直接构建下载 URL，避免调用 GitHub API
-      const release = await getGitHubRelease('NapNeko', 'NapCatQQ', targetTag, {
+      const release = await getGitHubRelease(NAPCAT_REPO_OWNER, NAPCAT_REPO_NAME, targetTag, {
         assetNames: [ReleaseName, 'NapCat.Framework.zip', 'NapCat.Shell.zip'],
         fetchChangelog: false, // 不需要 changelog，避免 API 调用
         mirror,

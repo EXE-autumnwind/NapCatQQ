@@ -26,6 +26,11 @@ import type {
   GithubRelease as GithubReleaseType,
 } from '@/types/github';
 
+// 维护接力：仓库信息卡片同样指向维护仓库
+// （与 config/site.tsx 的 links.github、napcat-common/src/repo.ts 保持一致）
+const REPO_API = 'https://api.github.com/repos/EXE-autumnwind/NapCatQQ';
+const REPO_URL = 'https://github.com/EXE-autumnwind/NapCatQQ';
+
 function displayData (data: number, loading: boolean, error?: Error) {
   if (error) {
     return <MdError className='text-primary-400' />;
@@ -45,7 +50,7 @@ export default function NapCatRepoInfo () {
     error: repoError,
     loading: repoLoading,
   } = useRequest(() =>
-    request.get<GirhubRepo>('https://api.github.com/repos/NapNeko/NapCatQQ')
+    request.get<GirhubRepo>(REPO_API)
   );
 
   // release info
@@ -55,7 +60,7 @@ export default function NapCatRepoInfo () {
     loading: releaseLoading,
   } = useRequest(() =>
     request.get<GithubReleaseType[]>(
-      'https://api.github.com/repos/NapNeko/NapCatQQ/releases'
+      `${REPO_API}/releases`
     )
   );
 
@@ -66,7 +71,7 @@ export default function NapCatRepoInfo () {
     loading: prLoading,
   } = useRequest(() =>
     request.get<GithubPullRequest[]>(
-      'https://api.github.com/repos/NapNeko/NapCatQQ/pulls'
+      `${REPO_API}/pulls`
     )
   );
 
@@ -77,7 +82,7 @@ export default function NapCatRepoInfo () {
     loading: contributorsLoading,
   } = useRequest(() =>
     request.get<GithubContributor[]>(
-      'https://api.github.com/repos/NapNeko/NapCatQQ/contributors'
+      `${REPO_API}/contributors`
     )
   );
 
@@ -98,34 +103,34 @@ export default function NapCatRepoInfo () {
       onAction={(key: React.Key) => {
         switch (key) {
           case 'releases':
-            openUrl('https://github.com/NapNeko/NapCatQQ/releases', true);
+            openUrl(`${REPO_URL}/releases`, true);
             break;
           case 'contributors':
             openUrl(
-              'https://github.com/NapNeko/NapCatQQ/graphs/contributors',
+              `${REPO_URL}/graphs/contributors`,
               true
             );
             break;
           case 'license':
             openUrl(
-              'https://github.com/NapNeko/NapCatQQ/blob/main/LICENSE',
+              `${REPO_URL}/blob/main/LICENSE`,
               true
             );
             break;
           case 'watchers':
-            openUrl('https://github.com/NapNeko/NapCatQQ/watchers', true);
+            openUrl(`${REPO_URL}/watchers`, true);
             break;
           case 'star':
-            openUrl('https://github.com/NapNeko/NapCatQQ/stargazers', true);
+            openUrl(`${REPO_URL}/stargazers`, true);
             break;
           case 'issues':
-            openUrl('https://github.com/NapNeko/NapCatQQ/issues', true);
+            openUrl(`${REPO_URL}/issues`, true);
             break;
           case 'pull_requests':
-            openUrl('https://github.com/NapNeko/NapCatQQ/pulls', true);
+            openUrl(`${REPO_URL}/pulls`, true);
             break;
           default:
-            openUrl('https://github.com/NapNeko/NapCatQQ', true);
+            openUrl(REPO_URL, true);
         }
       }}
     >

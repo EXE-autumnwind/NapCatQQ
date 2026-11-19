@@ -1,6 +1,20 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 
+/**
+ * 生成 Release 说明
+ *
+ * 输出格式（维护接力约定）：
+ *   新增
+ *   - ...
+ *   修复(如有)
+ *   - ...
+ *   删减（如有）
+ *   - ...
+ *
+ * 用法：node generate-release-notes.mjs <vX.Y.Z> <owner/repo> <output.md>
+ */
+
 function parseVersion (tag) {
   const match = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?$/.exec(tag);
   if (!match) return null;
@@ -54,24 +68,30 @@ if (!previousVersion) throw new Error(`No preceding version tag is reachable fro
 
 const commits = git('log', '--reverse', '--format=%H%x09%s', `refs/tags/${previousVersion.tag}..${currentRef}`);
 const repositoryUrl = `https://github.com/${repository}`;
-const changes = commits.split('\n').filter(Boolean).map(commit => {
+
+// 按提交前缀归类：feat -> 新增，fix -> 修复，revert/remove/drop/refactor -> 删减，其余归入新增
+const sections = { added: [], fixed: [], removed: [] };
+for (const commit of commits.split('\n').filter(Boolean)) {
   const separator = commit.indexOf('\t');
   const hash = commit.slice(0, separator);
   const subject = commit.slice(separator + 1).replace(/[\\`*_[\]<>]/g, '\\$&');
-  return `- ${subject} ([${hash.slice(0, 8)}](${repositoryUrl}/commit/${hash}))`;
-});
-const notes = [
-  `# NapCat ${currentVersion.tag}`,
-  '',
-  '[使用文档](https://napneko.github.io/) · [Shell 安装与兼容说明](https://napneko.github.io/guide/boot/Shell)',
-  '',
-  '## 更新',
-  '',
-  ...changes,
-  ...(changes.length ? [] : ['此标签范围内没有新增提交。']),
-  '',
-  `[完整变更](${repositoryUrl}/compare/${previousVersion.tag}...${currentVersion.tag})`,
-  '',
-].join('\n');
-writeFileSync(outputFile, notes, 'utf8');
+  const line = `- ${subject} ([${hash.slice(0, 8)}](${repositoryUrl}/commit/${hash}))`;
+  if (/^fix(\(|:|!|\s)/i.test(subject)) {
+    sections.fixed.push(line);
+  } else if (/^(revert|remove|drop|refactor|perf)(\(|:|!|\s)/i.test(subject)) {
+    sections.removed.push(line);
+  } else {
+    sections.added.push(line);
+  }
+}
+
+const lines = ['新增', ''];
+lines.push(...(sections.added.length ? sections.added : ['- 无']));
+lines.push('', '修复(如有)', '');
+if (sections.fixed.length) lines.push(...sections.fixed);
+lines.push('', '删减（如有）', '');
+if (sections.removed.length) lines.push(...sections.removed);
+lines.push('', `[完整变更](${repositoryUrl}/compare/${previousVersion.tag}...${currentVersion.tag})`, '');
+
+writeFileSync(outputFile, lines.join('\n'), 'utf8');
 console.log(`Generated release notes: ${previousVersion.tag}...${currentVersion.tag}`);

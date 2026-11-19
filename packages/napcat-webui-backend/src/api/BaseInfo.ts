@@ -5,6 +5,7 @@ import { sendSuccess, sendError } from '@/napcat-webui-backend/src/utils/respons
 import { WebUiConfig, webUiPathWrapper } from '@/napcat-webui-backend/index';
 import { getLatestTag, getAllTags, compareSemVer } from 'napcat-common/src/helper';
 import { getLatestActionArtifacts, getMirrorConfig } from '@/napcat-common/src/mirror';
+import { NAPCAT_ACTION_WORKFLOW, NAPCAT_REPO_NAME, NAPCAT_REPO_OWNER } from '@/napcat-common/src/repo';
 import { NapCatCoreWorkingEnv } from '@/napcat-webui-backend/src/types';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -94,7 +95,7 @@ export const getAllReleasesHandler: RequestHandler = async (req, res) => {
     // 获取 Action Artifacts（仅当需要时）
     if (needActions) {
       try {
-        const { artifacts, mirror: actionMirror } = await getLatestActionArtifacts('NapNeko', 'NapCatQQ', 'build.yml', 'main', 10, mirror);
+        const { artifacts, mirror: actionMirror } = await getLatestActionArtifacts(NAPCAT_REPO_OWNER, NAPCAT_REPO_NAME, NAPCAT_ACTION_WORKFLOW, 'main', 10, mirror);
 
         // 根据当前工作环境自动过滤对应的 artifact 类型
         const isFramework = WebUiDataRuntime.getWorkingEnv() === NapCatCoreWorkingEnv.Framework;

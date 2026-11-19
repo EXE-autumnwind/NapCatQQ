@@ -4,6 +4,7 @@ import os from 'node:os';
 import { QQVersionConfigType, QQLevel } from './types';
 import { compareSemVer } from './version';
 import { getAllGitHubTags as getAllTagsFromMirror } from './mirror';
+import { NAPCAT_REPO_NAME, NAPCAT_REPO_OWNER } from './repo';
 
 // 导出 compareSemVer 供其他模块使用
 export { compareSemVer } from './version';
@@ -250,7 +251,7 @@ export function parseAppidFromMajor (nodeMajor: string): string | undefined {
 // 使用 mirror 模块统一管理镜像
 
 export async function getAllTags (mirror?: string): Promise<{ tags: string[], mirror: string; }> {
-  return getAllTagsFromMirror('NapNeko', 'NapCatQQ', mirror);
+  return getAllTagsFromMirror(NAPCAT_REPO_OWNER, NAPCAT_REPO_NAME, mirror);
 }
 
 export async function getLatestTag (mirror?: string): Promise<string> {
