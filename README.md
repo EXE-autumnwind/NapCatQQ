@@ -1,5 +1,9 @@
 <img src="https://napneko.github.io/assets/newnewlogo.png" width = "305" height = "411" alt="NapCat" align=right />
 <div align="center">
+  
+# 说明
+
+此为NapCat的第三方维护分支，仅供学习交流使用
 
 # NapCat
 
