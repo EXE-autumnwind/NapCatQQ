@@ -191,4 +191,6 @@ jobs:
             NapCat.Framework.zip
             NapCat.Shell.zip
             NapCat.Shell.Linux.tar.gz
+            scripts/migrate-update-source.sh
+            scripts/migrate-update-source.bat
           draft: false
