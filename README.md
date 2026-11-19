@@ -49,7 +49,7 @@ docker logs -f napcat   # 首次启动会在日志里打印 WebUI 登录 token
 
 ## 从旧版本升级 / 迁移
 
-上游 `NapNeko/NapCatQQ` 已归档，旧版本内置的「检查更新」仍指向上游，会一直拿不到新版本。
+上游 `NapNeko/NapCatQQ` 已归档，旧版本内置的「检查更新」仍指向上游，会导致拿不到新版本。
 用迁移脚本把安装目录替换成本仓库的最新 Release 即可（等价于手动升级一次），执行之后
 WebUI 的检查更新、版本列表、临时版本（Action artifacts）都会指向本仓库。
 
@@ -63,10 +63,10 @@ WebUI 的检查更新、版本列表、临时版本（Action artifacts）都会�
 ```bash
 chmod +x migrate-update-source.sh
 
-# 先看会覆盖哪些文件，不实际写入
+# 查看将更改的文件
 ./migrate-update-source.sh --dir /opt/napcat --dry-run
 
-# 正式执行（默认取本仓库最新 Release）
+# 更新
 ./migrate-update-source.sh --dir /opt/napcat
 
 # 指定版本 / 下载加速前缀
@@ -76,25 +76,17 @@ chmod +x migrate-update-source.sh
 ### Windows
 
 ```bat
-:: 先看会覆盖哪些文件，不实际写入
+:: 查看将更改的文件
 migrate-update-source.bat --dir "C:\napcat" --dry-run
 
-:: 正式执行
+:: 更新
 migrate-update-source.bat --dir "C:\napcat"
 
 :: 指定版本 / 下载加速前缀
 migrate-update-source.bat --dir "C:\napcat" --tag v4.18.44 --mirror https://ghproxy.com/
 ```
 
-### 脚本做了什么
-
-- 自动识别版本：安装目录里有 `napcat.cjs` 按 **Framework** 版更新，否则按 **Shell** 版更新
-- 只替换程序文件，**不会动** `config/`、`data/`、`logs/`、`temp/`、`cache/`
-- 跳过 `NapCatWinBootMain.exe`、`NapCatWinBootHook.dll`、`quickLoginExample.bat` 三个引导文件
-- 支持 `--dry-run` 预览、`--tag` 指定版本、`--mirror` 加速；也可用环境变量 `NAPCAT_MIGRATE_URL` 直接指定完整下载地址
-- 执行完需要**重启 NapCat** 才会生效
-
-> Docker 用户不需要跑脚本：直接 `docker pull ghcr.io/exe-autumnwind/napcat:latest` 后重建容器即可；容器内的更新会在重建时丢失，WebUI 也会拒绝在容器内执行更新。
+> Docker： `docker pull ghcr.io/exe-autumnwind/napcat:latest` 后重建容器即可；容器内的更新会在重建时丢失，WebUI 也会拒绝在容器内执行更新。
 
 ## Thanks
 
