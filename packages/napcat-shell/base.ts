@@ -35,6 +35,7 @@ import { Napi2NativeLoader } from 'napcat-core/packet/handler/napi2nativeLoader'
 import { NapProtoMsg } from 'napcat-protobuf';
 import { OidbSvcTrpcTcpBase, OidbSvcTrpcTcp0XCDE_2RespBody } from '@/napcat-core/packet/transformer/proto';
 import { loadNapcatConfig } from '@/napcat-core/helper/config';
+import { initBypass } from '@/napcat-core/helper/bypass-probe';
 import { logSubscription, LogWrapper } from '@/napcat-core/helper/log';
 import { proxiedListenerOf } from '@/napcat-core/helper/proxy-handler';
 import { createOfflineRecovery } from '@/napcat-core/helper/offline-recovery';
@@ -670,13 +671,9 @@ export async function NCoreInitShell () {
   if (process.env['NAPCAT_ENABLE_VERBOSE_LOG'] === '1') {
     napi2nativeLoader.nativeExports.setVerbose?.(true);
   }
-  // wrapper.node 加载后立刻启用 Bypass（可通过环境变量禁用）
-  if (process.env['NAPCAT_DISABLE_BYPASS'] !== '1') {
-    const bypassOptions = napcatConfig.bypass ?? {};
-    napi2nativeLoader.nativeExports.enableAllBypasses?.(bypassOptions);
-  } else {
-    logger.log('[NapCat] Napi2NativeLoader: Bypass已通过环境变量禁用');
-  }
+  // wrapper.node 加载后立刻启用 Bypass（可通过环境变量 NAPCAT_DISABLE_BYPASS=1 禁用）
+  // 统一入口：应用开关 + 按当前 QQ 版本做静态可行性自检（结果进 WebUI「反检测」页）
+  initBypass(napi2nativeLoader, napcatConfig.bypass, logger, { wrapperPath: process.env['NAPCAT_WRAPPER_PATH'] });
 
   const o3Service = wrapper.NodeIO3MiscService.get();
   o3Service.addO3MiscListener(new NodeIO3MiscListener());

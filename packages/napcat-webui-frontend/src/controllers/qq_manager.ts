@@ -332,6 +332,14 @@ export default class QQManager {
     );
   }
 
+  /** 反检测运行状态 + 按当前 QQ 版本的静态自检结果 */
+  public static async getBypassStatus () {
+    const { data } = await serverRequest.get<ServerResponse<BypassStatusPayload>>(
+      '/NapCatConfig/GetBypassStatus'
+    );
+    return data.data;
+  }
+
   // per-uin 配置（napcat_{uin}.json）
 
   public static async getNapCatUinConfig () {

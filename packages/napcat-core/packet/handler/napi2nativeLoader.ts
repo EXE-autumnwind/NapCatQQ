@@ -3,15 +3,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { constants } from 'node:os';
 import { LogWrapper } from '../../helper/log';
-
-export interface BypassOptions {
-  hook?: boolean;
-  window?: boolean;
-  module?: boolean;
-  process?: boolean;
-  container?: boolean;
-  js?: boolean;
-}
+import { BypassOptions, SUPPORTED_BYPASS_PLATFORMS } from '../../helper/bypass';
 
 export interface Napi2NativeExportType {
   initHook?: (send: string, recv: string) => boolean;
@@ -20,10 +12,11 @@ export interface Napi2NativeExportType {
 }
 
 export class Napi2NativeLoader {
-  private readonly supportedPlatforms = ['win32.x64', 'linux.x64', 'linux.arm64', 'darwin.x64', 'darwin.arm64'];
+  private readonly supportedPlatforms: readonly string[] = SUPPORTED_BYPASS_PLATFORMS;
   private readonly exports: { exports: Napi2NativeExportType; } = { exports: {} };
   protected readonly logger: LogWrapper;
   private _loaded: boolean = false;
+  private _modulePath: string | undefined;
 
   constructor ({ logger }: { logger: LogWrapper; }) {
     this.logger = logger;
@@ -43,6 +36,7 @@ export class Napi2NativeLoader {
       dirname(fileURLToPath(import.meta.url)),
       './native/napi2native/napi2native.' + platform + '.node'
     );
+    this._modulePath = nativeModulePath;
 
     if (!fs.existsSync(nativeModulePath)) {
       this.logger.logWarn(`Napi2NativeLoader: 缺失运行时文件: ${nativeModulePath}`);
@@ -62,6 +56,11 @@ export class Napi2NativeLoader {
 
   get loaded (): boolean {
     return this._loaded;
+  }
+
+  /** 原生模块文件路径（未加载时为期望路径），用于反检测自检与排障 */
+  get modulePath (): string | undefined {
+    return this._modulePath;
   }
 
   get nativeExports (): Napi2NativeExportType {
