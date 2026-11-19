@@ -1,6 +1,3 @@
-<img src="https://napneko.github.io/assets/newnewlogo.png" width = "305" height = "411" alt="NapCat" align=right />
-<div align="center">
-  
 # 说明
 
 此为NapCat的第三方维护分支，仅供学习交流使用
@@ -39,29 +36,6 @@ _Modern protocol-side framework implemented based on NTQQ._
 
 > 项目非盈利，涉及 对接问题/基础问题/下层框架问题 请自行搜索解决，本项目社区不提供此类解答。
 
-## Link
-
-| Docs | [![Github.IO](https://img.shields.io/badge/docs%20on-Github.IO-orange)](https://napneko.github.io/) | [![Cloudflare.Worker](https://img.shields.io/badge/docs%20on-Cloudflare.Worker-black)](https://doc.napneko.icu/) | [![Cloudflare.HKServer](https://img.shields.io/badge/docs%20on-Cloudflare.HKServer-informational)](https://napcat.napneko.icu/) |
-|:-:|:-:|:-:|:-:|
-
-| Docs | [![Cloudflare.Pages](https://img.shields.io/badge/docs%20on-Cloudflare.Pages-blue)](https://napneko.pages.dev/) | [![Server.Other](https://img.shields.io/badge/docs%20on-Server.Other-green)](https://napcat.top/) | [![NapCat.Top](https://img.shields.io/badge/docs%20on-NapCat.Top-red)](https://napcat.top/) |
-|:-:|:-:|:-:|:-:|
-
-| QQ Group | [![NapCat Family Group 4](https://img.shields.io/badge/NapCat%20Family%20Group%204-Join-blue)](https://qm.qq.com/q/E4nfkGD6oK) | [![NapCat Family Group 3](https://img.shields.io/badge/NapCat%20Family%20Group%203-Join-blue)](https://qm.qq.com/q/XyiyGPqa42) | [![NapCat Family Group 2](https://img.shields.io/badge/NapCat%20Family%20Group%202-Join-blue)](https://qm.qq.com/q/gq18RH7o7S) | [![NapCat Family Group 1](https://img.shields.io/badge/NapCat%20Family%20Group%201-Join-blue)](https://qm.qq.com/q/VwpnklcXqo) |
-|:-:|:-:|:-:|:-:|:-:|
-
-| Telegram | [![Telegram](https://img.shields.io/badge/Telegram-napcatqq-blue)](https://t.me/napcatqq) |
-|:-:|:-:|
-
-| DeepWiki | [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/NapNeko/NapCatQQ) |
-|:-:|:-:|
-
-> QQ群因为特殊原因需要入群密钥，请在webui关于页面获取，仅最新的100个版本以内有效。
-
-社区相关日后会进一步加强审核，并严格限制一定时间的入群人数，请具备一定编程基础和问题解决能力再申请入群。
-
-[困困猫猫的高中](https://qm.qq.com/q/14aUVclRUA)
-
 ## Thanks
 
 - [Lagrange](https://github.com/LagrangeDev/Lagrange.Core) 对本项目的大力支持 参考部分代码 已获授权
@@ -75,9 +49,6 @@ _Modern protocol-side framework implemented based on NTQQ._
 - 不过最最重要的 还是需要感谢屏幕前的你哦~
 
 ---
-## Ending
-如果感兴趣可以自行Fork，不再提供除版本更新以外内容，直到失效，如果追求稳定性更推荐官方Bot，非常感谢一路陪伴。
-
 ## License
 
 本项目采用 混合协议 开源，因此使用本项目时，你需要注意以下几点：
