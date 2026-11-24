@@ -48,6 +48,10 @@ const itemsToCopy = [
   'QBar.dll',
   'wrapper.node',
   'LightQuic.dll',
+  // 9.9.38+ 的 wrapper.node 新增依赖，缺失会导致 dlopen 报 "The specified module could not be found"
+  'crypto.dll',
+  'ssl.dll',
+  'dbghelp.dll',
 ];
 
 const win64ItemsToCopy = [
